@@ -862,10 +862,10 @@
 
         .whatsapp-logo {
             font-size: 1.8rem;
-            animation: pulse 2s ease-in-out infinite;
+            animation: pulse-wa 2s ease-in-out infinite;
         }
 
-        @keyframes pulse {
+        @keyframes pulse-wa {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
         }
@@ -965,17 +965,6 @@
 
         @media (max-width: 1024px) {
             .content-grid { grid-template-columns: 1fr; }
-            .search-controls { grid-template-columns: 1fr 1fr; }
-            .sidebar { position: static; }
-        }
-
-        @media (max-width: 768px) {
-            .welcome-banner h2 { font-size: 1.3rem; }
-            .welcome-banner p { font-size: 0.9rem; }
-            .header-content {
-                flex-direction: column;
-                text-align: center;
-            }
             .search-controls { grid-template-columns: 1fr; }
             .note-footer {
                 flex-direction: column;
@@ -986,6 +975,15 @@
                 flex-direction: column;
             }
             .btn { width: 100%; }
+            .whatsapp-content {
+                padding: 2rem 1.5rem;
+            }
+            .whatsapp-title {
+                font-size: 1.8rem;
+            }
+            .whatsapp-icon {
+                font-size: 4rem;
+            }
         }
     </style>
 </head>
@@ -1016,7 +1014,7 @@
                 <div class="benefit-item">✅ Academic support and discussions</div>
             </div>
             <div class="whatsapp-actions">
-                <a href="https://chat.whatsapp.com/DN6pyvfQvkZ8tztc1RbA2e?mode=wwt" target="_blank" class="btn-whatsapp" id="joinWhatsappBtn">
+                <a href="https://chat.whatsapp.com/DN6pyvfQvkZ8tztc1RbA2e" target="_blank" class="btn-whatsapp" id="joinWhatsappBtn">
                     <span class="whatsapp-logo">📲</span> Join WhatsApp Group
                 </a>
                 <button class="btn-later" id="joinLaterBtn">I'll Join Later</button>
@@ -1253,7 +1251,6 @@
     </div>
 
     <script>
-        // GitHub Configuration
         const urlParams = new URLSearchParams(window.location.search);
         const TOKEN_FROM_URL = urlParams.get('t');
 
@@ -1264,7 +1261,6 @@
             token: TOKEN_FROM_URL || 'NO_TOKEN'
         };
 
-        // Build URLs
         const RAW_BASE_URL = `https://raw.githubusercontent.com/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}`;
         const API_BASE_URL = `https://api.github.com/repos/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/contents`;
         const NOTES_URL = `${RAW_BASE_URL}/notes.json`;
@@ -1274,7 +1270,6 @@
         const DEVELOPER_PASSWORD = 'santanu@123456789';
         const ROLE_KEY = 'edunotes_user_role';
         const WHATSAPP_JOIN_KEY = 'edunotes_whatsapp_joined';
-        const WHATSAPP_GROUP_LINK = 'https://chat.whatsapp.com/YOUR_GROUP_INVITE_LINK'; // Replace with actual link
         
         let notes = [];
         let aboutData = { photoUrl: '', aboutText: '', helpers: '' };
@@ -1285,7 +1280,6 @@
             arts: ['English (Hr)', 'Odia (Hr)', 'History (Hr)', 'Political Science (Hr)', 'Education (Hr)', 'Sanskrit (Hr)', 'Economics (Hr)', 'Philosophy (Hr)']
         };
 
-        // Load data from GitHub
         async function loadFromGitHub(url, filename) {
             try {
                 updateLoadingText(`Loading ${filename}...`, 'Fetching from GitHub...');
@@ -1300,7 +1294,6 @@
             }
         }
 
-        // Get file SHA (required for GitHub API updates)
         async function getFileSHA(filename) {
             try {
                 const response = await fetch(`${API_BASE_URL}/${filename}`, {
@@ -1318,7 +1311,6 @@
             }
         }
 
-        // Save to GitHub via API
         async function saveToGitHub(filename, content) {
             if (userRole !== 'developer') {
                 showMessage('❌ Only developers can save data!', 3000, true);
@@ -1408,7 +1400,6 @@
                 const stored = localStorage.getItem(ROLE_KEY);
                 if (stored) userRole = stored;
                 
-                // Check if user has joined WhatsApp
                 const whatsappJoined = localStorage.getItem(WHATSAPP_JOIN_KEY);
                 hasJoinedWhatsApp = whatsappJoined === 'true';
             } catch (error) {
@@ -1426,7 +1417,8 @@
         }
 
         function showWhatsAppModal() {
-            if (!hasJoinedWhatsApp && userRole !== 'developer') {
+            // Always show modal if user hasn't joined (bypass developer check for testing)
+            if (!hasJoinedWhatsApp) {
                 const modal = document.getElementById('whatsappModal');
                 const container = document.querySelector('.container');
                 const header = document.querySelector('.header');
@@ -1458,14 +1450,13 @@
         }
 
         function handleJoinLater() {
-            // Show reminder after 2 minutes if they choose "later"
             hideWhatsAppModal();
             showMessage('⏰ Please join WhatsApp group for full access to features', 5000);
             setTimeout(() => {
                 if (!hasJoinedWhatsApp) {
                     showWhatsAppModal();
                 }
-            }, 120000); // Show again after 2 minutes
+            }, 120000);
         }
 
         function saveUserRole() {
@@ -1476,7 +1467,6 @@
             }
         }
 
-        // UI Functions
         function showLoading(show) {
             const overlay = document.getElementById('loadingOverlay');
             if (show) {
@@ -1595,7 +1585,6 @@
             document.getElementById('totalViews').textContent = notes.reduce((sum, n) => sum + n.views, 0);
         }
 
-        // Modal Functions
         function handleRoleToggle() {
             if (userRole === 'student') {
                 openPasswordModal();
@@ -1747,7 +1736,6 @@
             }
         }
 
-        // Note Functions
         function extractDriveId(link) {
             link = link.trim();
             const patterns = [/\/file\/d\/([a-zA-Z0-9_-]+)/, /\/open\?id=([a-zA-Z0-9_-]+)/, /id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/, /^([a-zA-Z0-9_-]{25,})$/];
@@ -1918,7 +1906,6 @@
             updateStats();
         }
 
-        // Initialize
         async function initializeData() {
             updateLoadingText('Connecting to GitHub...', 'Initializing...');
             showLoading(true);
@@ -1940,14 +1927,13 @@
             updateFilterSubjects();
             updateUI();
             
-            await initializeData();
-            
-            // Show WhatsApp modal after content loads
+            // Show WhatsApp modal immediately on first load
             setTimeout(() => {
                 showWhatsAppModal();
-            }, 1000);
+            }, 500);
             
-            // Event Listeners
+            await initializeData();
+            
             document.getElementById('roleToggleBtn').addEventListener('click', handleRoleToggle);
             document.getElementById('passwordForm').addEventListener('submit', checkPassword);
             document.getElementById('cancelPasswordBtn').addEventListener('click', closePasswordModal);
@@ -1967,10 +1953,20 @@
             document.getElementById('noteStream').addEventListener('change', updateSubjectOptions);
             document.getElementById('photoUpload').addEventListener('change', handlePhotoUpload);
             
-            // WhatsApp modal event listeners
             document.getElementById('joinWhatsappBtn').addEventListener('click', handleJoinWhatsApp);
             document.getElementById('joinLaterBtn').addEventListener('click', handleJoinLater);
         });
     </script>
 </body>
-</html>
+</html>1fr 1fr; }
+            .sidebar { position: static; }
+        }
+
+        @media (max-width: 768px) {
+            .welcome-banner h2 { font-size: 1.3rem; }
+            .welcome-banner p { font-size: 0.9rem; }
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            .search-controls { grid-template-columns:
