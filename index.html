@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduNotes - Cloud Synced</title>
+    <title>EduNotes - Auto Synced</title>
     <style>
         * {
             margin: 0;
@@ -120,6 +120,10 @@
             animation: pulse 2s infinite;
         }
 
+        .sync-status.syncing {
+            background: #f59e0b;
+        }
+
         .sync-status.error {
             background: #ef4444;
         }
@@ -164,12 +168,12 @@
         }
 
         .warning-banner {
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-            color: #78350f;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
             padding: 1.5rem 2rem;
             border-radius: 15px;
             margin-bottom: 2rem;
-            box-shadow: 0 8px 30px rgba(251, 191, 36, 0.3);
+            box-shadow: 0 8px 30px rgba(16, 185, 129, 0.3);
             display: none;
         }
 
@@ -722,7 +726,7 @@
 <body>
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loader"></div>
-        <div class="loading-text" id="loadingText">Loading data from GitHub...</div>
+        <div class="loading-text" id="loadingText">Loading from GitHub...</div>
         <div class="loading-subtext" id="loadingSubtext">Please wait</div>
     </div>
 
@@ -732,12 +736,12 @@
         <div class="header-content">
             <div class="logo">
                 <h1>📚 EduNotes</h1>
-                <p>Cloud Synced Study Material</p>
+                <p>Auto-Synced Study Material</p>
             </div>
             <div class="header-right">
                 <div class="cloud-badge">
                     <span class="sync-status" id="syncStatus"></span>
-                    <span id="syncBadgeText">☁️ GitHub Synced</span>
+                    <span id="syncBadgeText">☁️ GitHub Auto-Sync</span>
                 </div>
                 <button class="role-toggle" id="roleToggleBtn">👤 Switch to Developer</button>
                 <span class="role-indicator" id="roleIndicator">Mode: <strong>Student</strong></span>
@@ -748,10 +752,10 @@
 
     <div class="container">
         <div class="warning-banner" id="warningBanner">
-            <div class="warning-title">⚠️ Developer Mode Active</div>
+            <div class="warning-title">✅ Developer Mode Active - Auto-Sync Enabled</div>
             <div class="warning-text">
-                <strong>IMPORTANT:</strong> All changes you make (adding notes, deleting notes, updating about section) will be <strong>PERMANENTLY saved to GitHub</strong>. 
-                Old data will be <strong>COMPLETELY REPLACED</strong> and cannot be recovered after refresh. All users will see your changes immediately!
+                All changes you make will be <strong>AUTOMATICALLY saved to GitHub</strong> within seconds. 
+                All users will see your changes immediately after refresh. No manual upload needed!
             </div>
         </div>
 
@@ -801,7 +805,7 @@
                         <div class="sync-icon">🔄</div>
                         <div class="sync-info-text">
                             <div class="sync-info-label">Backend</div>
-                            <div class="sync-info-value">GitHub Raw</div>
+                            <div class="sync-info-value">GitHub Actions</div>
                         </div>
                     </div>
                     <div class="sync-info-item">
@@ -860,9 +864,9 @@
                 </div>
             </div>
             <div id="aboutEditSection" style="display: none;">
-                <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
-                    <strong style="color: #856404;">⚠️ Warning:</strong> 
-                    <span style="color: #856404;">Saving will PERMANENTLY replace old data in GitHub. All users will see these changes!</span>
+                <div style="background: #d1fae5; border: 2px solid #10b981; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                    <strong style="color: #065f46;">✅ Auto-Sync Active:</strong> 
+                    <span style="color: #065f46;">Changes will be saved automatically to GitHub!</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Profile Photo</label>
@@ -883,7 +887,7 @@
                     <div class="help-text">List people who contributed to the project (one per line)</div>
                 </div>
                 <div class="modal-actions">
-                    <button class="btn-primary" id="saveAboutBtn">💾 Save Permanently to GitHub</button>
+                    <button class="btn-primary" id="saveAboutBtn">💾 Save to GitHub</button>
                 </div>
             </div>
             <div class="modal-actions" style="margin-top: 1rem;">
@@ -896,8 +900,8 @@
     <div class="modal" id="addModal">
         <div class="modal-content">
             <h2 class="modal-title">Add New Note</h2>
-            <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
-                <strong style="color: #856404;">⚠️ This will be saved permanently to GitHub!</strong>
+            <div style="background: #d1fae5; border: 2px solid #10b981; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <strong style="color: #065f46;">✅ Will be auto-saved to GitHub!</strong>
             </div>
             <p style="color: #666; margin-bottom: 1.5rem;">📌 Store your PDF in Google Drive and paste the shareable link below</p>
             <form id="addNoteForm">
@@ -948,7 +952,7 @@
                     <input type="text" class="form-input" id="noteUploader" placeholder="Your name" required>
                 </div>
                 <div class="modal-actions">
-                    <button type="submit" class="btn-primary">✅ Add Permanently to GitHub</button>
+                    <button type="submit" class="btn-primary">✅ Add to GitHub</button>
                     <button type="button" class="btn-secondary" id="cancelAddBtn">Cancel</button>
                 </div>
             </form>
@@ -956,15 +960,17 @@
     </div>
 
     <script>
-        // GitHub Configuration - Using GitHub Raw CDN for reading
+        // GitHub Configuration
         const GITHUB_CONFIG = {
             username: 'sd-77500',
-            dataRepo: 'edunotes-data',
-            branch: 'main'
+            repo: 'edunotes-data',
+            branch: 'main',
+            token: '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' // ⚠️ REPLACE THIS WITH YOUR TOKEN
         };
 
-        // Build raw content URLs
-        const RAW_BASE_URL = `https://raw.githubusercontent.com/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.dataRepo}/${GITHUB_CONFIG.branch}`;
+        // Build URLs
+        const RAW_BASE_URL = `https://raw.githubusercontent.com/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}`;
+        const API_BASE_URL = `https://api.github.com/repos/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/contents`;
         const NOTES_URL = `${RAW_BASE_URL}/notes.json`;
         const ABOUT_URL = `${RAW_BASE_URL}/about.json`;
 
@@ -980,11 +986,11 @@
             arts: ['English (Hr)', 'Odia (Hr)', 'History (Hr)', 'Political Science (Hr)', 'Education (Hr)', 'Sanskrit (Hr)', 'Economics (Hr)', 'Philosophy (Hr)']
         };
 
-        // Load data from GitHub Raw URLs
+        // Load data from GitHub
         async function loadFromGitHub(url, filename) {
             try {
                 updateLoadingText(`Loading ${filename}...`, 'Fetching from GitHub...');
-                const response = await fetch(url + '?t=' + Date.now()); // Cache busting
+                const response = await fetch(url + '?t=' + Date.now());
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const content = await response.json();
                 return content;
@@ -995,40 +1001,74 @@
             }
         }
 
-        // Save to GitHub via API (requires developer mode)
+        // Get file SHA (required for GitHub API updates)
+        async function getFileSHA(filename) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/${filename}`, {
+                    headers: {
+                        'Authorization': `token ${GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                if (!response.ok) return null;
+                const data = await response.json();
+                return data.sha;
+            } catch (error) {
+                console.error('Error getting SHA:', error);
+                return null;
+            }
+        }
+
+        // Save to GitHub via API
         async function saveToGitHub(filename, content) {
             if (userRole !== 'developer') {
                 showMessage('❌ Only developers can save data!', 3000, true);
                 return false;
             }
 
-            try {
-                updateLoadingText(`Saving ${filename}...`, 'Please wait...');
-                showLoading(true);
+            if (GITHUB_CONFIG.token === 'YOUR_GITHUB_TOKEN_HERE') {
+                showMessage('❌ GitHub token not configured! Check setup instructions.', 5000, true);
+                return false;
+            }
 
-                // Show instruction to user
-                const fileContent = JSON.stringify(content, null, 2);
-                
-                // Create a downloadable file for manual upload
-                const blob = new Blob([fileContent], { type: 'application/json' });
-                const downloadUrl = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = filename;
-                
-                if (confirm(`⚠️ MANUAL SAVE REQUIRED:\n\nYour browser will download "${filename}".\n\nPlease:\n1. Go to github.com/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.dataRepo}\n2. Click on ${filename}\n3. Click "Edit" (pencil icon)\n4. Replace all content with downloaded file content\n5. Click "Commit changes"\n\nClick OK to download the file now.`)) {
-                    a.click();
-                    URL.revokeObjectURL(downloadUrl);
-                    
-                    showMessage(`📥 File downloaded! Please upload to GitHub manually.`, 8000);
-                    return true;
-                } else {
-                    URL.revokeObjectURL(downloadUrl);
-                    return false;
+            try {
+                updateLoadingText(`Syncing ${filename}...`, 'Saving to GitHub...');
+                showLoading(true);
+                updateSyncStatus('syncing');
+
+                const sha = await getFileSHA(filename);
+                const contentBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2))));
+
+                const body = {
+                    message: `Update ${filename} - ${new Date().toISOString()}`,
+                    content: contentBase64,
+                    branch: GITHUB_CONFIG.branch
+                };
+
+                if (sha) body.sha = sha;
+
+                const response = await fetch(`${API_BASE_URL}/${filename}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to save');
                 }
+
+                showMessage(`✅ ${filename} saved to GitHub successfully!`, 3000);
+                updateSyncStatus('success');
+                return true;
             } catch (error) {
                 console.error(`Error saving ${filename}:`, error);
                 showMessage(`❌ Error: ${error.message}`, 5000, true);
+                updateSyncStatus('error');
                 return false;
             } finally {
                 showLoading(false);
@@ -1042,9 +1082,9 @@
                 renderNotes();
                 updateStats();
                 updateSyncInfo();
-                updateSyncStatus(true);
+                updateSyncStatus('success');
             } else {
-                updateSyncStatus(false);
+                updateSyncStatus('error');
             }
         }
 
@@ -1111,19 +1151,24 @@
             }, duration);
         }
 
-        function updateSyncStatus(isConnected) {
-            const status = document.getElementById('syncStatus');
+        function updateSyncStatus(status) {
+            const statusEl = document.getElementById('syncStatus');
             const statusText = document.getElementById('syncStatusText');
             const badgeText = document.getElementById('syncBadgeText');
             
-            if (isConnected) {
-                status.classList.remove('error');
+            statusEl.className = 'sync-status';
+            
+            if (status === 'success') {
                 statusText.textContent = 'Connected';
                 badgeText.textContent = '☁️ GitHub Synced';
-            } else {
-                status.classList.add('error');
-                statusText.textContent = 'Not Connected';
-                badgeText.textContent = '❌ GitHub Error';
+            } else if (status === 'syncing') {
+                statusEl.classList.add('syncing');
+                statusText.textContent = 'Syncing...';
+                badgeText.textContent = '🔄 Syncing...';
+            } else if (status === 'error') {
+                statusEl.classList.add('error');
+                statusText.textContent = 'Error';
+                badgeText.textContent = '❌ Sync Error';
             }
         }
 
@@ -1232,7 +1277,7 @@
                 saveUserRole();
                 closePasswordModal();
                 updateUI();
-                showMessage('✅ Developer mode activated! Note: Saves require manual GitHub upload.');
+                showMessage('✅ Developer mode activated! Auto-sync enabled.');
             } else {
                 error.classList.add('show');
                 document.getElementById('passwordInput').value = '';
@@ -1420,7 +1465,7 @@
         }
 
         async function deleteNote(id) {
-            if (!confirm('⚠️ DELETE WARNING: This will remove the note!\n\nYou will need to manually update GitHub.\n\nClick OK to continue.')) {
+            if (!confirm('⚠️ Are you sure you want to delete this note?\n\nThis will sync changes to GitHub immediately.')) {
                 return;
             }
             
@@ -1529,7 +1574,7 @@
                 showMessage('✅ Successfully loaded from GitHub!');
             } catch (error) {
                 showMessage('❌ Failed to load from GitHub: ' + error.message, 5000, true);
-                updateSyncStatus(false);
+                updateSyncStatus('error');
             } finally {
                 showLoading(false);
             }
