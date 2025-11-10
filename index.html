@@ -27,6 +27,45 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .loading-text { color: white; font-size: 1.3rem; font-weight: 600; text-align: center; }
         .loading-subtext { color: rgba(255,255,255,0.7); font-size: 1rem; }
+        .token-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; align-items: center; justify-content: center; padding: 2rem; z-index: 10001;
+        }
+        .token-screen.hidden { display: none; }
+        .token-content {
+            background: white; padding: 3rem; border-radius: 20px;
+            max-width: 500px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .token-icon { font-size: 5rem; text-align: center; margin-bottom: 1rem; }
+        .token-title { font-size: 2rem; color: #333; margin-bottom: 0.5rem; font-weight: 700; text-align: center; }
+        .token-subtitle { color: #666; margin-bottom: 2rem; text-align: center; line-height: 1.6; }
+        .token-input {
+            width: 100%; padding: 1rem; border: 2px solid #e0e0e0; border-radius: 10px;
+            font-size: 1rem; font-family: monospace; margin-bottom: 1rem;
+        }
+        .token-input:focus {
+            outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+        .token-error {
+            background: #fee; border: 2px solid #fcc; color: #c33; padding: 1rem;
+            border-radius: 10px; margin-bottom: 1rem; display: none;
+        }
+        .token-error.show { display: block; }
+        .token-btn {
+            width: 100%; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; border-radius: 10px; font-size: 1.1rem;
+            font-weight: 700; cursor: pointer; transition: all 0.3s;
+        }
+        .token-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(102,126,234,0.4); }
+        .token-help {
+            margin-top: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 10px;
+            font-size: 0.9rem; color: #666; line-height: 1.6;
+        }
+        .token-security {
+            margin-top: 1rem; padding: 1rem; background: #e8f5e9; border-left: 4px solid #4caf50;
+            border-radius: 5px; font-size: 0.85rem; color: #2e7d32;
+        }
         .error-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
@@ -223,7 +262,30 @@
     </style>
 </head>
 <body>
-    <div class="loading-overlay" id="loadingOverlay">
+    <!-- Token Entry Screen -->
+    <div class="token-screen" id="tokenScreen">
+        <div class="token-content">
+            <div class="token-icon">🔑</div>
+            <h2 class="token-title">GitHub Access Required</h2>
+            <p class="token-subtitle">Enter your GitHub Personal Access Token to continue</p>
+            <div class="token-error" id="tokenError">Invalid token or connection failed. Please check and try again.</div>
+            <input type="password" class="token-input" id="tokenInput" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+            <button class="token-btn" id="tokenSubmitBtn">Connect to GitHub</button>
+            <div class="token-security">
+                🔒 <strong>Security:</strong> Your token is stored only in browser memory (RAM) for this session. It's never saved to disk or sent anywhere except GitHub API.
+            </div>
+            <div class="token-help">
+                <strong>How to get a token:</strong><br>
+                1. Go to GitHub Settings → Developer settings → Personal access tokens<br>
+                2. Generate new token (classic)<br>
+                3. Give it "repo" permissions<br>
+                4. Copy and paste it here<br><br>
+                <strong>Note:</strong> You'll need to enter this once per browser session.
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay hidden" id="loadingOverlay">
         <div class="loader"></div>
         <div class="loading-text" id="loadingText">Loading data from GitHub...</div>
         <div class="loading-subtext" id="loadingSubtext">Please wait</div>
@@ -373,28 +435,40 @@
     </div>
 
     <script>
-        // Get token from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const GITHUB_TOKEN = urlParams.get('t');
-
-        if (!GITHUB_TOKEN) {
-            document.getElementById('errorScreen').classList.add('show');
-            document.getElementById('loadingOverlay').classList.add('hidden');
-            document.getElementById('errorMessage').textContent = 'No access token provided in URL';
-            document.getElementById('errorCode').textContent = 'Please add ?t=YOUR_TOKEN to the URL';
-            throw new Error('No token');
-        }
-
+        // Token stored in memory only (session-based, not persisted)
+        let GITHUB_TOKEN = null;
+        
         const GITHUB_CONFIG = {
             username: 'sd-77500',
             repo: 'edunotes-data',
-            token: GITHUB_TOKEN
+            get token() { return GITHUB_TOKEN; }
         };
 
         const DEVELOPER_PASSWORD = 'santanu@123456789';
         let notes = [];
         let userRole = 'student';
         let notesSha = null;
+
+        // Token submission
+        document.getElementById('tokenSubmitBtn').addEventListener('click', async () => {
+            const tokenInput = document.getElementById('tokenInput');
+            const token = tokenInput.value.trim();
+            
+            if (!token) {
+                document.getElementById('tokenError').textContent = 'Please enter a token';
+                document.getElementById('tokenError').classList.add('show');
+                return;
+            }
+            
+            GITHUB_TOKEN = token;
+            await initializeData();
+        });
+
+        document.getElementById('tokenInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('tokenSubmitBtn').click();
+            }
+        });
 
         function showLoading(show) {
             document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
@@ -471,261 +545,231 @@
                 notes = notesResult.content;
                 notesSha = notesResult.sha;
 
+                document.getElementById('tokenScreen').classList.add('hidden');
                 showLoading(false);
                 renderNotes();
                 updateStats();
-                showMessage('✅ Data loaded successfully!');
+                populateSubjects();
+                showMessage('✅ Connected successfully!');
             } catch (error) {
                 console.error('Error:', error);
-                showError(
-                    'Failed to load data from GitHub',
-                    `Error: ${error.message}\n\nPossible causes:\n- Invalid or expired token\n- Repository doesn't exist\n- Network connection issue`
-                );
+                showLoading(false);
+                document.getElementById('tokenError').textContent = 'Invalid token or connection failed: ' + error.message;
+                document.getElementById('tokenError').classList.add('show');
             }
         }
 
         function updateStats() {
             document.getElementById('totalNotes').textContent = notes.length;
-            document.getElementById('totalDownloads').textContent = notes.reduce((a, n) => a + (n.downloads || 0), 0);
-            document.getElementById('totalViews').textContent = notes.reduce((a, n) => a + (n.views || 0), 0);
+            const totalDownloads = notes.reduce((sum, note) => sum + (note.downloads || 0), 0);
+            const totalViews = notes.reduce((sum, note) => sum + (note.views || 0), 0);
+            document.getElementById('totalDownloads').textContent = totalDownloads;
+            document.getElementById('totalViews').textContent = totalViews;
         }
 
         function renderNotes() {
-            const list = document.getElementById('notesList');
-            if (notes.length === 0) {
-                list.innerHTML = `
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const streamFilter = document.getElementById('streamFilter').value;
+            const subjectFilter = document.getElementById('subjectFilter').value;
+            const yearFilter = document.getElementById('yearFilter').value;
+
+            let filtered = notes.filter(note => {
+                const matchesSearch = !searchTerm || 
+                    note.title.toLowerCase().includes(searchTerm) ||
+                    note.subject.toLowerCase().includes(searchTerm) ||
+                    note.chapter.toLowerCase().includes(searchTerm);
+                const matchesStream = streamFilter === 'all' || note.stream === streamFilter;
+                const matchesSubject = subjectFilter === 'all' || note.subject === subjectFilter;
+                const matchesYear = yearFilter === 'all' || note.year === yearFilter;
+                return matchesSearch && matchesStream && matchesSubject && matchesYear;
+            });
+
+            const notesList = document.getElementById('notesList');
+            if (filtered.length === 0) {
+                notesList.innerHTML = `
                     <div class="no-notes">
                         <div class="no-notes-icon">📭</div>
-                        <div class="no-notes-text">No notes available yet</div>
+                        <div class="no-notes-text">No notes found</div>
                     </div>
                 `;
                 return;
             }
 
-            list.innerHTML = notes.map(note => `
+            notesList.innerHTML = filtered.map((note, index) => {
+                const actualIndex = notes.indexOf(note);
+                return `
                 <div class="note-card">
-                    <div class="cloud-badge-card">
-                        <span>☁️</span>
-                        <span>GitHub</span>
-                    </div>
+                    <div class="cloud-badge-card">☁️ Synced</div>
                     <div class="note-header">
-                        <span class="subject-badge">${note.subject || 'Subject'} - ${note.year || 'Year'}</span>
-                        <h3 class="note-title">${note.title || 'Untitled'}</h3>
-                        <p class="note-chapter">${note.chapter || 'No chapter'}</p>
+                        <span class="subject-badge">${note.subject}</span>
+                        <h3 class="note-title">${note.title}</h3>
+                        <p class="note-chapter">📖 ${note.chapter}</p>
                     </div>
                     <div class="note-footer">
                         <div class="note-stats">
-                            <span>👁️ ${note.views || 0}</span>
-                            <span>⬇️ ${note.downloads || 0}</span>
-                            <span>📦 ${note.fileSize || 'N/A'}</span>
-                            <span>👤 ${note.uploadedBy || 'Unknown'}</span>
+                            <span>📅 ${note.year}</span>
+                            <span>👁️ ${note.views || 0} views</span>
+                            <span>⬇️ ${note.downloads || 0} downloads</span>
+                            <span>📦 ${note.fileSize}</span>
+                            <span>👤 ${note.uploadedBy}</span>
                         </div>
                         <div class="note-actions">
-                            <button class="btn btn-view" onclick="viewNote(${note.id})">👁️ View</button>
-                            <button class="btn btn-download" onclick="downloadNote(${note.id})">⬇️ Download</button>
-                            ${userRole === 'developer' ? `<button class="btn btn-delete" onclick="deleteNote(${note.id})">🗑️ Delete</button>` : ''}
+                            <button class="btn btn-view" onclick="viewNote(${actualIndex})">👁️ View</button>
+                            <button class="btn btn-download" onclick="downloadNote(${actualIndex})">⬇️ Download</button>
+                            ${userRole === 'developer' ? `<button class="btn btn-delete" onclick="deleteNote(${actualIndex})">🗑️ Delete</button>` : ''}
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
-        function viewNote(id) {
-            const note = notes.find(n => n.id === id);
-            if (note && note.driveId) {
-                note.views = (note.views || 0) + 1;
-                saveToGitHub('notes.json', notes, notesSha).then(sha => notesSha = sha);
-                updateStats();
-                window.open(`https://drive.google.com/file/d/${note.driveId}/preview`, '_blank');
-            }
+        async function viewNote(index) {
+            const note = notes[index];
+            note.views = (note.views || 0) + 1;
+            await syncNotes();
+            window.open(`https://drive.google.com/file/d/${note.driveLinkId}/preview`, '_blank');
+            renderNotes();
+            updateStats();
         }
 
-        function downloadNote(id) {
-            const note = notes.find(n => n.id === id);
-            if (note && note.driveId) {
-                note.downloads = (note.downloads || 0) + 1;
-                saveToGitHub('notes.json', notes, notesSha).then(sha => notesSha = sha);
-                updateStats();
-                window.open(`https://drive.google.com/uc?export=download&id=${note.driveId}`, '_blank');
-            }
+        async function downloadNote(index) {
+            const note = notes[index];
+            note.downloads = (note.downloads || 0) + 1;
+            await syncNotes();
+            window.open(`https://drive.google.com/uc?export=download&id=${note.driveLinkId}`, '_blank');
+            showMessage('✅ Download started!');
+            renderNotes();
+            updateStats();
         }
 
-        async function deleteNote(id) {
-            if (!confirm('⚠️ Permanently delete this note from GitHub?')) return;
+        async function deleteNote(index) {
+            if (!confirm('Are you sure you want to delete this note from GitHub?')) return;
             
             showLoading(true);
-            notes = notes.filter(n => n.id !== id);
+            updateLoadingText('Deleting note...', 'Updating GitHub');
             
+            notes.splice(index, 1);
+            await syncNotes();
+            
+            showLoading(false);
+            showMessage('✅ Note deleted successfully!');
+            renderNotes();
+            updateStats();
+            populateSubjects();
+        }
+
+        async function syncNotes() {
             try {
                 notesSha = await saveToGitHub('notes.json', notes, notesSha);
-                renderNotes();
-                updateStats();
-                showMessage('✅ Note deleted successfully!');
             } catch (error) {
-                showMessage('❌ Failed to delete note: ' + error.message, true);
-            } finally {
-                showLoading(false);
+                console.error('Sync error:', error);
+                showMessage('❌ Failed to sync with GitHub', true);
+                throw error;
             }
         }
 
-        function updateUI() {
-            const isDev = userRole === 'developer';
-            document.getElementById('roleToggleBtn').textContent = isDev ? '👨‍💻 Student Mode' : '🔓 Developer Mode';
-            document.getElementById('roleIndicator').innerHTML = `Mode: <strong>${isDev ? 'Developer' : 'Student'}</strong>`;
-            document.getElementById('roleIndicator').classList.toggle('developer', isDev);
-            document.getElementById('addBtn').classList.toggle('show', isDev);
-            document.getElementById('warningBanner').classList.toggle('show', isDev);
-            renderNotes();
-        }
+        // Role toggle
+        document.getElementById('roleToggleBtn').addEventListener('click', () => {
+            if (userRole === 'student') {
+                document.getElementById('passwordModal').classList.add('active');
+            } else {
+                userRole = 'student';
+                updateRoleUI();
+            }
+        });
 
-        // Event Listeners
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeData();
-
-            document.getElementById('roleToggleBtn').addEventListener('click', () => {
-                if (userRole === 'student') {
-                    document.getElementById('passwordModal').classList.add('active');
-                } else {
-                    userRole = 'student';
-                    updateUI();
-                    showMessage('Switched to Student Mode');
-                }
-            });
-
-            document.getElementById('passwordForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const pwd = document.getElementById('passwordInput').value;
-                if (pwd === DEVELOPER_PASSWORD) {
-                    userRole = 'developer';
-                    document.getElementById('passwordModal').classList.remove('active');
-                    document.getElementById('passwordInput').value = '';
-                    document.getElementById('passwordError').style.display = 'none';
-                    updateUI();
-                    showMessage('✅ Developer Mode Activated!');
-                } else {
-                    document.getElementById('passwordError').style.display = 'block';
-                }
-            });
-
-            document.getElementById('cancelPasswordBtn').addEventListener('click', () => {
+        document.getElementById('passwordForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = document.getElementById('passwordInput').value;
+            if (password === DEVELOPER_PASSWORD) {
+                userRole = 'developer';
                 document.getElementById('passwordModal').classList.remove('active');
                 document.getElementById('passwordInput').value = '';
                 document.getElementById('passwordError').style.display = 'none';
-            });
-
-            document.getElementById('addBtn').addEventListener('click', () => {
-                document.getElementById('addModal').classList.add('active');
-            });
-
-            document.getElementById('cancelAddBtn').addEventListener('click', () => {
-                document.getElementById('addModal').classList.remove('active');
-                document.getElementById('addNoteForm').reset();
-            });
-
-            document.getElementById('addNoteForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const newNote = {
-                    id: Date.now(),
-                    subject: document.getElementById('noteSubject').value,
-                    year: document.getElementById('noteYear').value,
-                    title: document.getElementById('noteTitle').value,
-                    chapter: document.getElementById('noteChapter').value,
-                    driveId: document.getElementById('driveLinkId').value,
-                    fileSize: document.getElementById('fileSize').value,
-                    uploadedBy: document.getElementById('noteUploader').value,
-                    views: 0,
-                    downloads: 0,
-                    uploadedAt: new Date().toISOString()
-                };
-
-                showLoading(true);
-                
-                try {
-                    notes.push(newNote);
-                    notesSha = await saveToGitHub('notes.json', notes, notesSha);
-                    
-                    document.getElementById('addModal').classList.remove('active');
-                    document.getElementById('addNoteForm').reset();
-                    
-                    renderNotes();
-                    updateStats();
-                    showMessage('✅ Note added successfully to GitHub!');
-                } catch (error) {
-                    notes.pop(); // Remove the note if save failed
-                    showMessage('❌ Failed to add note: ' + error.message, true);
-                } finally {
-                    showLoading(false);
-                }
-            });
-
-            // Search and filter functionality
-            document.getElementById('searchInput').addEventListener('input', filterNotes);
-            document.getElementById('streamFilter').addEventListener('change', filterNotes);
-            document.getElementById('subjectFilter').addEventListener('change', filterNotes);
-            document.getElementById('yearFilter').addEventListener('change', filterNotes);
+                updateRoleUI();
+                showMessage('✅ Developer mode activated!');
+            } else {
+                document.getElementById('passwordError').style.display = 'block';
+            }
         });
 
-        function filterNotes() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const stream = document.getElementById('streamFilter').value;
-            const subject = document.getElementById('subjectFilter').value;
-            const year = document.getElementById('yearFilter').value;
+        document.getElementById('cancelPasswordBtn').addEventListener('click', () => {
+            document.getElementById('passwordModal').classList.remove('active');
+            document.getElementById('passwordInput').value = '';
+            document.getElementById('passwordError').style.display = 'none';
+        });
 
-            const filtered = notes.filter(note => {
-                const matchSearch = !search || 
-                    note.title?.toLowerCase().includes(search) ||
-                    note.chapter?.toLowerCase().includes(search) ||
-                    note.subject?.toLowerCase().includes(search);
-                
-                const matchSubject = subject === 'all' || note.subject === subject;
-                const matchYear = year === 'all' || note.year === year;
-
-                return matchSearch && matchSubject && matchYear;
-            });
-
-            renderFilteredNotes(filtered);
+        function updateRoleUI() {
+            const isDev = userRole === 'developer';
+            document.getElementById('roleIndicator').innerHTML = `Mode: <strong>${isDev ? 'Developer' : 'Student'}</strong>`;
+            document.getElementById('roleIndicator').classList.toggle('developer', isDev);
+            document.getElementById('warningBanner').classList.toggle('show', isDev);
+            document.getElementById('addBtn').classList.toggle('show', isDev);
+            document.getElementById('roleToggleBtn').textContent = isDev ? 'Exit Developer Mode' : 'Developer Mode';
+            renderNotes();
         }
 
-        function renderFilteredNotes(filteredNotes) {
-            const list = document.getElementById('notesList');
-            if (filteredNotes.length === 0) {
-                list.innerHTML = `
-                    <div class="no-notes">
-                        <div class="no-notes-icon">🔍</div>
-                        <div class="no-notes-text">No notes found matching your filters</div>
-                    </div>
-                `;
-                return;
-            }
+        // Add note modal
+        document.getElementById('addBtn').addEventListener('click', () => {
+            document.getElementById('addModal').classList.add('active');
+        });
 
-            list.innerHTML = filteredNotes.map(note => `
-                <div class="note-card">
-                    <div class="cloud-badge-card">
-                        <span>☁️</span>
-                        <span>GitHub</span>
-                    </div>
-                    <div class="note-header">
-                        <span class="subject-badge">${note.subject || 'Subject'} - ${note.year || 'Year'}</span>
-                        <h3 class="note-title">${note.title || 'Untitled'}</h3>
-                        <p class="note-chapter">${note.chapter || 'No chapter'}</p>
-                    </div>
-                    <div class="note-footer">
-                        <div class="note-stats">
-                            <span>👁️ ${note.views || 0}</span>
-                            <span>⬇️ ${note.downloads || 0}</span>
-                            <span>📦 ${note.fileSize || 'N/A'}</span>
-                            <span>👤 ${note.uploadedBy || 'Unknown'}</span>
-                        </div>
-                        <div class="note-actions">
-                            <button class="btn btn-view" onclick="viewNote(${note.id})">👁️ View</button>
-                            <button class="btn btn-download" onclick="downloadNote(${note.id})">⬇️ Download</button>
-                            ${userRole === 'developer' ? `<button class="btn btn-delete" onclick="deleteNote(${note.id})">🗑️ Delete</button>` : ''}
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+        document.getElementById('cancelAddBtn').addEventListener('click', () => {
+            document.getElementById('addModal').classList.remove('active');
+            document.getElementById('addNoteForm').reset();
+        });
+
+        document.getElementById('addNoteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const newNote = {
+                subject: document.getElementById('noteSubject').value,
+                year: document.getElementById('noteYear').value,
+                title: document.getElementById('noteTitle').value,
+                chapter: document.getElementById('noteChapter').value,
+                driveLinkId: document.getElementById('driveLinkId').value,
+                fileSize: document.getElementById('fileSize').value,
+                uploadedBy: document.getElementById('noteUploader').value,
+                views: 0,
+                downloads: 0,
+                stream: 'science'
+            };
+
+            showLoading(true);
+            updateLoadingText('Adding note...', 'Saving to GitHub');
+
+            notes.push(newNote);
+            await syncNotes();
+
+            document.getElementById('addModal').classList.remove('active');
+            document.getElementById('addNoteForm').reset();
+            showLoading(false);
+            showMessage('✅ Note added successfully!');
+            renderNotes();
+            updateStats();
+            populateSubjects();
+        });
+
+        // Search and filters
+        document.getElementById('searchInput').addEventListener('input', renderNotes);
+        document.getElementById('streamFilter').addEventListener('change', renderNotes);
+        document.getElementById('subjectFilter').addEventListener('change', renderNotes);
+        document.getElementById('yearFilter').addEventListener('change', renderNotes);
+
+        function populateSubjects() {
+            const subjects = [...new Set(notes.map(n => n.subject))];
+            const subjectFilter = document.getElementById('subjectFilter');
+            const currentValue = subjectFilter.value;
+            subjectFilter.innerHTML = '<option value="all">All Subjects</option>' +
+                subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+            subjectFilter.value = currentValue;
         }
+
+        // Initialize on page load - show token screen
+        window.addEventListener('load', () => {
+            // Token screen is already visible by default
+        });
     </script>
 </body>
 </html>
